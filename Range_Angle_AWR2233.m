@@ -1,3 +1,49 @@
+function HardWare
+ chirpParams.slope = 60.012e12; % 60 MHz per µs
+ chirpParams.T = 30e-6;
+ chirpParams.f0 = 77e9;
+ chirpParams.repeat_duration = 160e-6;
+ chirpParams.B = chirpParams.slope * chirpParams.T;
+ 
+ radarparams.fs = 10e6;
+ radarparams.Ts = 1 / radarparams.fs;
+ radarparams.N = 256;
+ radarparams.L = 128;
+ radarparams.P = 4;
+ 
+ N = radarparams.N; 
+ L = radarparams.L; 
+ P = radarparams.P;
+ NumFrames = 8;
+ 
+ X = parseMultiChannelADCData('adc_data.bin', N, L, P, NumFrames);
+ samplesPerFrame = N * L;
+ X = X(1:samplesPerFrame, :);
+ AdcDataTensor = zeros(N, L, P);
+ for i = 1:P
+     tensor = reshape(X(:, i), [N, L]);
+     AdcDataTensor(:, :, i) = tensor;
+ end
+ DetectVisualizeTargets(radarparams, chirpParams, AdcDataTensor);
+end
+
+
+function [adc_mc_cmplx] = parseMultiChannelADCData(filename, N, L, P, NumFrames)
+FID = fopen(filename, 'r');
+data = fread(FID, 'int16');
+fclose(FID);
+
+adc_mc_cmplx = zeros(N * L * NumFrames, P);
+for ch = 1:P
+    ch_offset = 2 * (ch - 1) + 1;
+    for sampIdx = 1:N * L * NumFrames
+        im = data(2 * P * (sampIdx - 1) + ch_offset);
+        re = data(2 * P * (sampIdx - 1) + ch_offset + 1);
+        adc_mc_cmplx(sampIdx, ch) = complex(re, im);
+    end
+end
+end
+
 function DetectVisualizeTargets(rp, cp, x_adc) 
 % 
 ======================================================================== 
